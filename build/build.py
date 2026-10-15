@@ -31,6 +31,8 @@ player = one(player, 'this.MK = makeMakingOf(this.R, Deck.slides.map((x) => x.da
 player = one(player, '  // 制作过程：盖在整页上的第二块画布；只在第一次进入本页时自动播放，侧栏按钮可重播\n',
              '  // 制作过程：盖在整页上的第二块画布；侧栏「▶ 制作过程」点开\n')
 paint_range = re.search(r'^const paintRange = .*$', src, re.M)[0]
+speed_css = '\n'.join(l for l in src.split('\n') if 'mk-speed' in l and l.startswith(('.', '/*')))
+speed_html = re.search(r'<div class="mk-speed" id="mkSpeed".*?</div>', src)[0]
 ids = re.findall(r'<section class="slide[^"]*"[^>]*data-id="([^"]+)"', src)
 
 # ---------- 页面 ----------
@@ -39,7 +41,7 @@ title = re.search(r'(<h2 class="title reveal">Demo: this talk in.*?</h2>)', src)
 a = src.index('<div class="rc-side reveal">', src.index('data-id="code-video-demo"')); b = src.index('</div>\n  </div>\n  <canvas class="mk"', a)
 side = src[a:b + len('</div>\n')].replace(' reveal', '')
 side = one(side, '<button class="rc-mk" id="mkReplay" data-en="↻ Making-of">↻ 制作过程</button>',
-           '<button class="rc-mk" id="mkReplay" data-en="▶ Making-of" title="23 秒制作过程（M）">▶ 制作过程</button>')
+           '<button class="rc-mk" id="mkReplay" data-en="▶ Making-of" title="制作过程（M）">▶ 制作过程</button>')
 a = src.index('<div class="rc-player reveal" id="rcPlayer">'); b = src.index('<div class="rc-side reveal">', a)
 playerhtml = src[a:b].replace(' reveal', '').rstrip() + '\n'
 playerhtml = one(playerhtml, 'title="铺满本页（Esc 退出）"', 'title="全屏（Esc 退出）"')
@@ -133,8 +135,9 @@ h2.title .zh { font-size: 34px; line-height: 1.4; margin-top: 12px; }
 @keyframes rcPop { from { transform: scale(.985); } to { transform: scale(1); } }
 @keyframes rcBig { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 14px/1.5 var(--f-mono); color: var(--muted); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+{speed_css}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .2s !important; } }
-'''
+'''.replace('{speed_css}', speed_css)
 
 APP = r'''
 /* ---------- 单页外壳：舞台缩放、中英切换、键盘、浏览器全屏 ---------- */
@@ -175,7 +178,7 @@ page = f'''<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Beyond Prompt · 一分钟速看</title>
-<meta name="description" content="一场 AIGC 可控生成技术分享的 60 秒速看：画面 render(g, t) 和音乐（Web Audio 实时合成）全部由 Claude 写的 JS 生成，附 23 秒制作过程动画。">
+<meta name="description" content="一场 AIGC 可控生成技术分享的 60 秒速看：画面 render(g, t) 和音乐（Web Audio 实时合成）全部由 Claude 写的 JS 生成，附制作过程动画。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f12'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='%23c8f03c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -186,7 +189,7 @@ page = f'''<!doctype html>
 <!--
   Beyond Prompt · 一分钟速看（单文件版）
   画面：makeRecap().render(g, t) 纯函数逐帧绘制；音乐：同一个乐谱 score() + Web Audio 合成器 synth() 实时合成。
-  制作过程：makeMakingOf() 用同一份源码、镜头关键帧和乐谱画出 23 秒的“需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片”。
+  制作过程：makeMakingOf() 用同一份源码、镜头关键帧和乐谱画出“需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片”（约 33 秒，0.5×–2× 可调速）。
   代码原样取自演示文档（2026-10-14 AIGC 技术分享），9 张图片以 base64 内联。快捷键：空格 播放 / 暂停 · M 制作过程 · L 中 / EN · Esc 跳过 / 退出全屏。
 -->
 <div class="vp"><div class="stage" id="stage">
@@ -197,6 +200,7 @@ page = f'''<!doctype html>
     {playerhtml}    {side}  </div>
   <canvas class="mk" id="mkCanvas" width="1920" height="1080"></canvas>
   <button data-en="Skip ›" class="mk-skip" id="mkSkip">跳过 ›</button>
+  {speed_html}
   <div class="foot" data-en="{html.escape(CREDIT_EN)}">{html.escape(CREDIT_ZH)}</div>
 </section>
 </div></div>

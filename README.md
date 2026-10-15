@@ -1,6 +1,6 @@
 # Beyond Prompt · 一分钟速看
 
-2026-10-14 AIGC 技术分享《Beyond Prompt：可控生成的现状》的 60 秒速看，以及 23 秒的制作过程动画。
+2026-10-14 AIGC 技术分享《Beyond Prompt：可控生成的现状》的 60 秒速看，以及约半分钟的制作过程动画（右下可调 0.5×–2× 速度）。
 
 **在线观看：** https://williamzheng27.github.io/beyond-prompt-recap/
 

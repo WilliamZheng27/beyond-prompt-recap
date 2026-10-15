@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Beyond Prompt · 一分钟速看</title>
-<meta name="description" content="一场 AIGC 可控生成技术分享的 60 秒速看：画面 render(g, t) 和音乐（Web Audio 实时合成）全部由 Claude 写的 JS 生成，附 23 秒制作过程动画。">
+<meta name="description" content="一场 AIGC 可控生成技术分享的 60 秒速看：画面 render(g, t) 和音乐（Web Audio 实时合成）全部由 Claude 写的 JS 生成，附制作过程动画。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f12'/%3E%3Cpath d='M12 9l12 7-12 7z' fill='%23c8f03c'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,6 +95,12 @@ h2.title .zh { font-size: 34px; line-height: 1.4; margin-top: 12px; }
 @keyframes rcPop { from { transform: scale(.985); } to { transform: scale(1); } }
 @keyframes rcBig { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .foot { position: absolute; left: var(--pad-x); right: var(--pad-x); bottom: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 14px/1.5 var(--f-mono); color: var(--muted); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+.mk-speed { position: absolute; right: 244px; bottom: 40px; z-index: 31; display: none; gap: 2px; padding: 3px; background: rgba(13, 15, 18, .6); border: 1.5px solid var(--line-2); border-radius: 6px; }
+.mk-speed button { font: 600 16px var(--f-mono); color: var(--muted); background: none; border: 0; border-radius: 4px; padding: 8px 10px; cursor: pointer; }
+.mk-speed button:hover { color: var(--ink); }
+.mk-speed button.on { background: var(--lime); color: #0d0f12; }
+.slide.mk-on .mk-speed { display: flex; }
+.slide.mk-on:not(.mk-hide) .mk-speed { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .2s !important; } }
 </style>
 </head>
@@ -102,7 +108,7 @@ h2.title .zh { font-size: 34px; line-height: 1.4; margin-top: 12px; }
 <!--
   Beyond Prompt · 一分钟速看（单文件版）
   画面：makeRecap().render(g, t) 纯函数逐帧绘制；音乐：同一个乐谱 score() + Web Audio 合成器 synth() 实时合成。
-  制作过程：makeMakingOf() 用同一份源码、镜头关键帧和乐谱画出 23 秒的“需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片”。
+  制作过程：makeMakingOf() 用同一份源码、镜头关键帧和乐谱画出“需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片”（约 33 秒，0.5×–2× 可调速）。
   代码原样取自演示文档（2026-10-14 AIGC 技术分享），9 张图片以 base64 内联。快捷键：空格 播放 / 暂停 · M 制作过程 · L 中 / EN · Esc 跳过 / 退出全屏。
 -->
 <div class="vp"><div class="stage" id="stage">
@@ -127,11 +133,12 @@ h2.title .zh { font-size: 34px; line-height: 1.4; margin-top: 12px; }
       <div class="rc-it"><b>ONE TAKE · 一镜到底</b><p data-en="The whole film is one 8800 × 3640 canvas; the camera flies through 8 scenes along keyframes, no cuts">整片是一张 8800 × 3640 的大画布，镜头沿关键帧飞过 8 块场景，全程没有剪切</p></div>
       <div class="rc-it o"><b>MUSIC · 音乐</b><p data-en="Synthesized live in Web Audio: 120 BPM, C–G–Am–F; drums, bass, chords, melody and transitions are all oscillators + noise">Web Audio 现场合成：120 BPM，C–G–Am–F；鼓、贝斯、和弦、旋律、转场音效都是振荡器 + 噪声</p></div>
       <div class="rc-it"><b>ASSETS · 素材</b><p data-en="Only the timeline&#x27;s 8 public sample images and 1 square-dance photo; everything else is drawn in code">只用了时间线的 8 张公开样图和 1 张广场舞照片，其余全部由代码绘制</p></div>
-      <div class="rc-n"><b id="rcLines">—</b><span data-en="lines of JS · by Claude">行 JS · 由 Claude 编写</span><button class="rc-mk" id="mkReplay" data-en="▶ Making-of" title="23 秒制作过程（M）">▶ 制作过程</button></div>
+      <div class="rc-n"><b id="rcLines">—</b><span data-en="lines of JS · by Claude">行 JS · 由 Claude 编写</span><button class="rc-mk" id="mkReplay" data-en="▶ Making-of" title="制作过程（M）">▶ 制作过程</button></div>
     </div>
   </div>
   <canvas class="mk" id="mkCanvas" width="1920" height="1080"></canvas>
   <button data-en="Skip ›" class="mk-skip" id="mkSkip">跳过 ›</button>
+  <div class="mk-speed" id="mkSpeed" aria-label="播放速度"><button data-r="0.5">0.5×</button><button data-r="0.75">0.75×</button><button data-r="1">1×</button><button data-r="1.5">1.5×</button><button data-r="2">2×</button></div>
   <div class="foot" data-en="Timeline samples from the GAN, DDPM, Stable Diffusion, DiT, ControlNet and FLUX papers / official repos; Sora and Veo 3 frames from Wikimedia Commons (public domain). Non-commercial use only.">时间线样图取自 GAN、DDPM、Stable Diffusion、DiT、ControlNet、FLUX 的论文 / 官方仓库，Sora、Veo 3 截帧来自 Wikimedia Commons（公有领域）；仅用于非商用分享</div>
 </section>
 </div></div>
@@ -906,14 +913,30 @@ function makeRecap() {
 }
 
 /* ===========================================
-   制作过程：需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片，23 秒动画，最后把成片“弹”进播放器
+   制作过程：需求 → 分镜 → 写代码 → 镜头 → 配乐 → 自检 → 成片，约 33.5 秒动画，最后把成片“弹”进播放器
    同样是纯函数 render(g, t)；画面里的源码、镜头轨迹、乐谱、截图都直接取自 makeRecap 本身，不是示意
    =========================================== */
 
 function makeMakingOf(R, ids, posterT) {
   const { C, ZHS, SERIF, SANS, MONO, seg, eio, eoe, eob, pop, fade, frac, rr, T, L, at, box } = R.kit;
   const VW = 1920, VH = 1080;
-  const M = { DUR: 23.3, REVEAL: 22.45, target: [120, 316, 1168, 657], render };
+  // 下面各段的关键帧按 23.3 秒的“内部时间”写；播放时用 warp() 把真实时间换算过去：
+  // 内容慢放 SLOW 倍，每段收尾（内容出全、开始淡出之前）再停 HOLD 秒，最后弹出成片那 1.8 秒保持原速
+  const SLOW = 1.25, HOLD = .8, HOLDS = [3.3, 6.8, 10.3, 13.8, 17.3, 21.4], TAIL = 21.5;
+  const real = (t) => (Math.min(t, TAIL) * SLOW + HOLD * HOLDS.filter((h) => h < t).length + Math.max(0, t - TAIL));
+  function warp(r) {
+    let r0 = 0, t0 = 0;
+    for (const h of HOLDS) {
+      const rh = r0 + (h - t0) * SLOW;                       // 走到这个停顿点的真实时刻
+      if (r < rh) return t0 + (r - r0) / SLOW;
+      if (r < rh + HOLD) return h;
+      r0 = rh + HOLD; t0 = h;
+    }
+    const rt = r0 + (TAIL - t0) * SLOW;
+    return r < rt ? t0 + (r - r0) / SLOW : TAIL + (r - rt);
+  }
+  let RT = 0;                                                // 真实时间：光标闪烁、呼吸点用它，停顿时也不定住
+  const M = { DUR: real(23.3), REVEAL: real(22.45), target: [120, 316, 1168, 657], render: (g, r) => { RT = r; render(g, warp(r)); } };
   const SRC = makeRecap.toString().split('\n');
   const STEPS = [[0, ['需求', 'Brief']], [3.5, ['分镜', 'Shots']], [7, ['写代码', 'Code']], [10.5, ['镜头', 'Camera']], [14, ['配乐', 'Music']], [17.5, ['自检', 'Check']], [21.5, ['成片', 'Final']]];
   const LOG = [
@@ -952,7 +975,7 @@ function makeMakingOf(R, ids, posterT) {
       const n = Math.min(line.length, left); left -= n;
       if (n > 0) { cx = 160 + T(g, line.slice(0, n), 160, LY(l), F, C.ink); cy = LY(l); }
     });
-    if (t < 2 && frac(t * 3) < .6) { g.fillStyle = C.lime; g.fillRect(cx + 4, cy - 34, 4, 44); }
+    if (t < 2 && frac(RT * 3) < .6) { g.fillStyle = C.lime; g.fillRect(cx + 4, cy - 34, 4, 44); }
     NEED.forEach((nd, i) => {
       const [h, d] = L(...nd);
       const y = 280 + i * 124, t0 = 2.3 + i * .22, a = fade(t, t0, .25), s = spots[i];
@@ -1037,7 +1060,7 @@ function makeMakingOf(R, ids, posterT) {
       const y = 334 + (i - top) * 26.5;
       T(g, String(i + 1).padStart(3, ' '), 140, y, `400 15px ${MONO}`, 'rgba(125,132,146,.6)');
       const ex = codeLine(g, SRC[i], 196, y, 980);
-      if (i === n - 1 && n < SRC.length && frac(t * 3) < .6) { g.fillStyle = C.lime; g.fillRect(Math.min(ex, 1170) + 2, y - 16, 9, 20); }
+      if (i === n - 1 && n < SRC.length && frac(RT * 3) < .6) { g.fillStyle = C.lime; g.fillRect(Math.min(ex, 1170) + 2, y - 16, 9, 20); }
     }
     g.restore();
     T(g, L('写出来的函数', 'FUNCTIONS WRITTEN'), 1250, 283, `600 18px ${MONO}`, C.mute);
@@ -1195,10 +1218,10 @@ function makeMakingOf(R, ids, posterT) {
     g.fillStyle = 'rgba(236,232,223,.1)'; g.fillRect(120, 206, 1680, 3);
     g.fillStyle = C.lime; g.fillRect(120, 206, 1680 * clamp(t / 21.5, 0, 1), 3);
     const msg = L(...LOG[cur]), n = Math.floor(msg.length * seg(t, STEPS[cur][0] + .1, STEPS[cur][0] + .9));
-    g.fillStyle = C.lime; g.beginPath(); g.arc(128, 1013, 5 + 2 * Math.sin(t * 8), 0, 7); g.fill();
+    g.fillStyle = C.lime; g.beginPath(); g.arc(128, 1013, 5 + 2 * Math.sin(RT * 8), 0, 7); g.fill();
     T(g, 'Claude ›', 146, 1020, `600 22px ${MONO}`, C.lime);
     const w2 = T(g, msg.slice(0, n), 262, 1020, `500 24px ${SANS}`, C.ink2);
-    if (frac(t * 2.5) < .6) { g.fillStyle = C.ink2; g.fillRect(266 + w2, 998, 3, 28); }
+    if (frac(RT * 2.5) < .6) { g.fillStyle = C.ink2; g.fillRect(266 + w2, 998, 3, 28); }
   }
 
   const SCENES = [[0, 3.6, sAsk], [3.5, 7.1, sBoard], [7, 10.6, sCode], [10.5, 14.1, sCam], [14, 17.6, sMusic], [17.5, 21.9, sCheck]];
@@ -1248,6 +1271,7 @@ const App = {
     this.s = s; this.MK = makeMakingOf(this.R, DECK_IDS, this.POSTER);
     this.mkg = $('#mkCanvas', s).getContext('2d');
     $('#mkSkip', s).addEventListener('click', () => this.mkEnd());
+    this.mkSpeed($('#mkSpeed', s));
     $('#mkReplay', s).addEventListener('click', () => this.making());
     this.box = $('#rcPlayer', s); this.cv = $('#rcCanvas', s); this.g = this.cv.getContext('2d');
     this.rng = $('#rcT', s); this.tv = $('#rcTv', s); this.btn = $('#rcPlay', s);
@@ -1396,6 +1420,18 @@ const App = {
     this.rec = null; r.keep = keep; this.box.classList.remove('rec');
     if (r.state !== 'inactive') r.stop();
   },
+  // 制作过程倍速：0.5× – 2×，两个制作过程共用一个选择，记在浏览器里；时间按 dt × 倍速累加，中途换挡不跳帧
+  mkSpeed(el) {
+    this.mkRate = () => { try { return +localStorage.getItem('deck-mk-rate') || 1; } catch (e) { return 1; } };
+    this.mkPaint = () => el.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.r === this.rate));
+    this.rate = this.mkRate(); this.mkPaint();
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      this.rate = +b.dataset.r; this.mkPaint();
+      try { localStorage.setItem('deck-mk-rate', this.rate); } catch (e2) { /* 存不了（无痕模式等）就只在本次生效 */ }
+    });
+  },
   // 制作过程：盖在整页上的第二块画布；侧栏「▶ 制作过程」点开
   making() {
     this.pause(); this.full(false); this.mkStop();
@@ -1403,9 +1439,10 @@ const App = {
     this.MK.target = [b.offsetLeft, b.offsetTop, b.offsetWidth, b.offsetHeight];
     b.classList.remove('on'); this.btn.textContent = '▶'; this.draw(this.POSTER);
     this.s.classList.add('mk-on', 'mk-hide', 'mk-hold');
-    const t0 = performance.now();
+    this.rate = this.mkRate(); this.mkPaint();
+    let t = 0, last = performance.now();
     const loop = (now) => {
-      const t = Math.max(0, now - t0) / 1000;
+      t += Math.max(0, now - last) / 1000 * this.rate; last = now;
       if (t >= this.MK.DUR) return this.mkEnd();
       if (t >= this.MK.REVEAL) this.s.classList.remove('mk-hide');
       this.MK.render(this.mkg, t);
